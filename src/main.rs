@@ -2,6 +2,7 @@ mod app;
 mod game;
 mod net;
 mod ui;
+mod update;
 
 use std::io;
 use std::time::{Duration, Instant};
@@ -17,6 +18,9 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 const TICK: Duration = Duration::from_millis(16); // ~60 fps
 
 fn main() -> Result<()> {
+    // Auto-update before doing anything else (silently skips on failure)
+    update::auto_update();
+
     let name = std::env::args().nth(1).unwrap_or_else(|| {
         std::env::var("USER")
             .or_else(|_| std::env::var("USERNAME"))

@@ -3,6 +3,31 @@ use std::collections::HashMap;
 use std::net::{SocketAddr, SocketAddrV4, Ipv4Addr, UdpSocket};
 use std::time::Instant;
 
+/// Get all subnet broadcast addresses for local interfaces.
+fn local_broadcast_addrs() -> Vec<Ipv4Addr> {
+    let mut addrs = vec![Ipv4Addr::BROADCAST]; // 255.255.255.255 always
+
+    // Parse ifconfig output to find broadcast addresses
+    if let Ok(out) = std::process::Command::new("ifconfig").output() {
+        let text = String::from_utf8_lossy(&out.stdout);
+        for line in text.lines() {
+            // macOS: "inet 192.168.1.5 netmask 0xffffff00 broadcast 192.168.1.255"
+            // Linux: "inet 192.168.1.5  netmask 255.255.255.0  broadcast 192.168.1.255"
+            if let Some(idx) = line.find("broadcast ") {
+                let after = &line[idx + 10..];
+                let token = after.split_whitespace().next().unwrap_or("");
+                if let Ok(ip) = token.parse::<Ipv4Addr>() {
+                    if !addrs.contains(&ip) {
+                        addrs.push(ip);
+                    }
+                }
+            }
+        }
+    }
+
+    addrs
+}
+
 const DISCOVERY_PORT: u16 = 44144;
 const ANNOUNCE_INTERVAL: f64 = 1.5;
 const PEER_TIMEOUT: f64 = 5.0;
@@ -107,8 +132,11 @@ impl Net {
             game_port: self.game_port,
         };
         if let Ok(data) = bincode::serialize(&msg) {
-            let dest = SocketAddr::from(([255, 255, 255, 255], DISCOVERY_PORT));
-            let _ = self.discovery.send_to(&data, dest);
+            // Send to all known broadcast addresses (limited + subnet-directed)
+            for bcast in local_broadcast_addrs() {
+                let dest = SocketAddr::from((bcast, DISCOVERY_PORT));
+                let _ = self.discovery.send_to(&data, dest);
+            }
         }
     }
 
