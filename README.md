@@ -13,7 +13,6 @@ curl -fsSL https://storozhenko98.github.io/tt/install.sh | bash
 Or grab the binary from [Releases](https://github.com/storozhenko98/tt/releases/latest):
 
 - macOS (Apple Silicon): `tt-darwin-arm64`
-- macOS (Intel): `tt-darwin-x64`
 - Linux x64: `tt-linux-x64`
 
 ## Play

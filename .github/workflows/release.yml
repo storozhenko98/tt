@@ -37,26 +37,6 @@ jobs:
           cp target/aarch64-apple-darwin/release/tt tt-darwin-arm64
           gh release upload "${{ github.ref_name }}" tt-darwin-arm64 --clobber
 
-  build-macos-x64:
-    needs: create-release
-    runs-on: macos-13
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-      - uses: swatinem/rust-cache@v2
-      - name: Build
-        run: cargo build --release --target x86_64-apple-darwin
-      - name: Upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cp target/x86_64-apple-darwin/release/tt tt-darwin-x64
-          gh release upload "${{ github.ref_name }}" tt-darwin-x64 --clobber
-
   build-linux-x64:
     needs: create-release
     runs-on: ubuntu-latest
