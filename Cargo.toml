@@ -1,0 +1,13 @@
+[package]
+name = "tt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+socket2 = { version = "0.5", features = ["all"] }
+rand = "0.8"
+anyhow = "1"

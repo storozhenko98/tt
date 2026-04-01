@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tt - Terminal Table Tennis</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0c0c0c;
+      color: #ccc;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem 3rem;
+    }
+
+    /* ── header ── */
+    h1 {
+      font-size: 4rem;
+      color: #4ade80;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 30px rgba(74,222,128,0.3);
+    }
+
+    .tag {
+      color: #666;
+      font-size: 0.95rem;
+      margin-bottom: 3rem;
+    }
+
+    /* ── terminal mockup ── */
+    .term {
+      background: #0e0e0e;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      margin-bottom: 3rem;
+      overflow: hidden;
+    }
+
+    .term-bar {
+      background: #1a1a1a;
+      border-bottom: 1px solid #2a2a2a;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.7rem;
+      color: #555;
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-r { background: #f87171; }
+    .dot-y { background: #fbbf24; }
+    .dot-g { background: #4ade80; }
+
+    /* score HUD */
+    .hud {
+      border: 1px solid #444;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.75rem;
+      color: #ccc;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .hud .sc { color: #67e8f9; }
+    .hud .so { color: #f87171; }
+    .hud .ph { color: #999; }
+
+    /* table frame */
+    .table-frame {
+      border: 1px solid #3a7a3a;
+      position: relative;
+      background: #0a120a;
+    }
+
+    .table-label {
+      position: absolute;
+      top: -0.55rem;
+      left: 0.5rem;
+      background: #0a120a;
+      padding: 0 0.3rem;
+      font-size: 0.7rem;
+      color: #bbb;
+    }
+
+    .table-label::after {
+      content: '';
+      display: inline-block;
+      width: 4rem;
+      height: 0;
+      border-top: 1px solid #3a7a3a;
+      vertical-align: middle;
+      margin-left: 0.3rem;
+    }
+
+    /* playing field */
+    .field-inner {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+    }
+
+    /* table surface (dotted border inside) */
+    .surface {
+      position: absolute;
+      inset: 6% 4%;
+      border: 1px dotted rgba(200,200,200,0.35);
+    }
+
+    /* center vertical line */
+    .vline {
+      position: absolute;
+      left: 50%;
+      top: 6%;
+      bottom: 6%;
+      border-left: 1px dotted rgba(60,120,60,0.4);
+    }
+
+    /* net - horizontal dashed */
+    .net {
+      position: absolute;
+      left: 4%;
+      right: 4%;
+      top: 50%;
+      border-top: 1.5px dotted rgba(200,200,200,0.5);
+    }
+
+    /* paddles */
+    .pad {
+      position: absolute;
+      height: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .pad::before {
+      content: '';
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-top: 2px dotted currentColor;
+    }
+
+    .pad-top {
+      width: 22%;
+      top: 14%;
+      left: 55%;
+      color: #f87171;
+    }
+
+    .pad-bot {
+      width: 22%;
+      bottom: 12%;
+      left: 42%;
+      color: #67e8f9;
+    }
+
+    /* ball */
+    .ball {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #ddd;
+      bottom: 18%;
+      left: 48%;
+    }
+
+    /* controls bar */
+    .ctrl-bar {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.72rem;
+      color: #555;
+    }
+
+    .ctrl-bar .hi { color: #fbbf24; }
+
+    /* ── sections ── */
+    h2 {
+      font-size: 1.1rem;
+      color: #fbbf24;
+      margin-bottom: 0.75rem;
+      margin-top: 2.5rem;
+    }
+
+    h2::before {
+      content: '> ';
+      color: #555;
+    }
+
+    /* install */
+    .install-box {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      overflow: hidden;
+    }
+
+    .install-box:hover { border-color: #4ade80; }
+
+    .install-box .prompt { color: #555; flex-shrink: 0; }
+    .install-box .cmd {
+      color: #4ade80;
+      font-size: 0.85rem;
+      word-break: break-all;
+    }
+    .install-box .hint {
+      color: #333;
+      font-size: 0.7rem;
+      margin-left: auto;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .links {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .links a {
+      color: #67e8f9;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+
+    .links a:hover { text-decoration: underline; }
+
+    /* play */
+    .cmd-example {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: #888;
+      line-height: 1.8;
+    }
+
+    .cmd-example .prompt { color: #555; }
+    .cmd-example .exe { color: #4ade80; }
+    .cmd-example .comment { color: #444; }
+
+    p { line-height: 1.7; color: #999; margin-top: 0.75rem; }
+    p code { color: #4ade80; }
+
+    /* controls */
+    .keys {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      gap: 0.25rem 1.25rem;
+      font-size: 0.9rem;
+    }
+
+    .k { color: #67e8f9; }
+    .v { color: #999; }
+
+    /* lists */
+    ul {
+      list-style: none;
+      font-size: 0.9rem;
+    }
+
+    ul li {
+      color: #999;
+      line-height: 1.8;
+      padding-left: 1rem;
+      position: relative;
+    }
+
+    ul li::before {
+      content: '-';
+      color: #444;
+      position: absolute;
+      left: 0;
+    }
+
+    ul li strong { color: #ccc; font-weight: 600; }
+
+    .footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #1a1a1a;
+      color: #333;
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    .footer a { color: #444; text-decoration: none; }
+    .footer a:hover { color: #666; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <h1>tt</h1>
+    <p class="tag">P2P terminal table tennis.<br>LAN discovery. Spin physics. No server.</p>
+
+    <!-- terminal mockup — matches actual ratatui braille rendering -->
+    <div class="term">
+      <div class="term-bar">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        <span style="margin-left:0.4rem">tt</span>
+      </div>
+      <div class="hud">
+        <span><span class="sc">tt: 5</span> &nbsp; vs &nbsp; <span class="so">tt: 3</span></span>
+        <span class="ph">Rally (4 hits)</span>
+      </div>
+      <div class="table-frame">
+        <span class="table-label">Table</span>
+        <div class="field-inner">
+          <div class="surface"></div>
+          <div class="vline"></div>
+          <div class="net"></div>
+          <div class="pad pad-top"></div>
+          <div class="pad pad-bot"></div>
+          <div class="ball"></div>
+        </div>
+      </div>
+      <div class="ctrl-bar">
+        [A/D] Move &nbsp; [W/S] Spin &nbsp; [Space] Serve &nbsp; <span class="hi">[H] Help</span> &nbsp; [Q] Quit
+      </div>
+    </div>
+
+    <h2>Install</h2>
+    <div class="install-box" onclick="navigator.clipboard.writeText(this.querySelector('.cmd').textContent)">
+      <span class="prompt">$</span>
+      <span class="cmd">curl -fsSL storozhenko98.github.io/tt/install.sh | bash</span>
+      <span class="hint">copy</span>
+    </div>
+    <div class="links">
+      <a href="https://github.com/storozhenko98/tt/releases/latest">releases</a>
+      <a href="https://github.com/storozhenko98/tt">source</a>
+    </div>
+
+    <h2>Play</h2>
+    <div class="cmd-example">
+      <span class="prompt">$</span> <span class="exe">tt</span> <span class="comment"># terminal 1</span><br>
+      <span class="prompt">$</span> <span class="exe">tt</span> <span class="comment"># terminal 2 (same LAN)</span><br>
+      <span class="prompt">$</span> <span class="exe">tt</span> YourName <span class="comment"># optional name</span>
+    </div>
+    <p>Players discover each other automatically via UDP broadcast. Select a player, Enter to challenge, Y to accept.</p>
+
+    <h2>Controls</h2>
+    <div class="keys">
+      <span class="k">A / D</span><span class="v">Move paddle</span>
+      <span class="k">W</span><span class="v">Toggle topspin</span>
+      <span class="k">S</span><span class="v">Toggle backspin</span>
+      <span class="k">Space</span><span class="v">Serve</span>
+      <span class="k">H</span><span class="v">Help / rules</span>
+      <span class="k">Q</span><span class="v">Quit</span>
+    </div>
+
+    <h2>Spin</h2>
+    <ul>
+      <li><strong>Topspin</strong> &mdash; ball accelerates, harder to return</li>
+      <li><strong>Backspin</strong> &mdash; ball decelerates, deceptive</li>
+      <li><strong>Sidespin</strong> &mdash; paddle movement at contact curves it</li>
+      <li><strong>Angle</strong> &mdash; edge of paddle = sharper angle</li>
+    </ul>
+
+    <h2>How it works</h2>
+    <ul>
+      <li>UDP broadcast discovery on port 44144</li>
+      <li>Direct peer-to-peer, no relay server</li>
+      <li>Host-authoritative physics at 60fps</li>
+      <li>Braille-dot rendering for smooth motion</li>
+    </ul>
+
+    <div class="footer">
+      Built by <a href="https://x.com/technoleviathan">@technoleviathan</a>
+      &middot; MIT
+      &middot; <a href="https://github.com/storozhenko98/tt">GitHub</a>
+      &middot; <a href="https://storozh.dev">storozh.dev</a>
+    </div>
+
+  </div>
+</body>
+</html>
