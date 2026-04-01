@@ -8,19 +8,22 @@ pub const NET_Y: f64 = 70.0;
 // Paddle
 pub const PADDLE_W: f64 = 16.0;
 pub const PADDLE_MARGIN: f64 = 10.0;
-pub const PADDLE_SPEED: f64 = 90.0;
+pub const PADDLE_SPEED: f64 = 70.0;
 
 // Ball
 pub const BALL_SPEED_INIT: f64 = 80.0;
 pub const BALL_SPEED_MAX: f64 = 160.0;
 pub const HIT_SPEEDUP: f64 = 1.05;
-pub const MAX_TRAIL: usize = 15;
+pub const MAX_TRAIL: usize = 5;
 
 // Spin
 pub const SPIN_CURVE: f64 = 25.0;
 pub const SPIN_ACCEL: f64 = 12.0;
 pub const SPIN_DECAY: f64 = 0.98;
 pub const MAX_SPIN: f64 = 2.5;
+
+// Ball visual radius (used for collision tolerance)
+pub const BALL_RADIUS: f64 = 2.0;
 
 // Scoring
 pub const WIN_SCORE: u32 = 11;
@@ -210,18 +213,18 @@ impl Game {
         let half = PADDLE_W / 2.0;
         let dx = self.ball.x - paddle.x;
 
-        if dx.abs() > half {
+        if dx.abs() > half + BALL_RADIUS {
             return; // miss
         }
 
         let py = paddle_y(player);
         let dir: f64 = if player == 0 { 1.0 } else { -1.0 };
-        self.ball.y = py + dir * 2.0;
+        self.ball.y = py + dir * (BALL_RADIUS + 1.0);
 
         let speed = (self.ball.vx.powi(2) + self.ball.vy.powi(2)).sqrt();
         let new_speed = (speed * HIT_SPEEDUP).min(BALL_SPEED_MAX);
 
-        let offset = dx / half; // -1..1
+        let offset = (dx / half).clamp(-1.0, 1.0);
         let angle = offset * std::f64::consts::FRAC_PI_4;
 
         self.ball.vx = new_speed * angle.sin() + paddle.vx * 0.25;

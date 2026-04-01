@@ -254,24 +254,34 @@ fn render_game(frame: &mut Frame, app: &App) {
                     .collect();
                 ctx.draw(&Points {
                     coords: &coords,
-                    color: Color::Rgb(80, 80, 80),
+                    color: Color::Rgb(40, 40, 40),
                 });
             }
 
-            // Ball
+            // Ball — filled oval for visibility
             let bx = game.ball.x;
             let by = fy(game.ball.y);
-            ctx.draw(&Points {
-                coords: &[(bx, by)],
-                color: Color::White,
-            });
+            for &(dy, hw) in &[
+                (0.0, 2.0),
+                (1.0, 1.8), (-1.0, 1.8),
+                (2.0, 1.2), (-2.0, 1.2),
+                (3.0, 0.4), (-3.0, 0.4),
+            ] {
+                ctx.draw(&CanvasLine {
+                    x1: bx - hw,
+                    y1: by + dy,
+                    x2: bx + hw,
+                    y2: by + dy,
+                    color: Color::White,
+                });
+            }
 
             // Spin indicator
             let total_spin =
                 game.ball.spin_x.abs() + game.ball.spin_y.abs();
             if total_spin > 0.3 {
-                let sx = bx + game.ball.spin_x * 2.0;
-                let raw_sy = game.ball.spin_y * 2.0;
+                let sx = bx + game.ball.spin_x * 4.0;
+                let raw_sy = game.ball.spin_y * 4.0;
                 let sy = by + if flip { -raw_sy } else { raw_sy };
                 ctx.draw(&Points {
                     coords: &[(sx, sy)],
@@ -306,6 +316,45 @@ fn render_game(frame: &mut Frame, app: &App) {
         ),
     ]);
     frame.render_widget(Paragraph::new(controls), chunks[2]);
+
+    // --- Game over overlay ---
+    if let Phase::GameOver { winner } = &game.phase {
+        let you_won = *winner == local;
+        let area = centered_rect(36, 9, frame.area());
+        frame.render_widget(Clear, area);
+
+        let (title, color) = if you_won {
+            ("  YOU WIN!", Color::Green)
+        } else {
+            ("  YOU LOSE", Color::Red)
+        };
+
+        let lines = vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                title,
+                Style::default()
+                    .fg(color)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+            Line::from(format!(
+                "  {}  {} — {}  {}",
+                local_name, game.scores[local], game.scores[remote], remote_name
+            )),
+            Line::from(""),
+            Line::from(Span::styled(
+                "  [Q] Return to lobby",
+                Style::default().fg(Color::DarkGray),
+            )),
+        ];
+
+        let border_title = if you_won { " Victory " } else { " Game Over " };
+        let para = Paragraph::new(lines)
+            .block(Block::bordered().title(border_title))
+            .style(Style::default().bg(Color::Black));
+        frame.render_widget(para, area);
+    }
 
     // --- Help overlay ---
     if app.show_help {

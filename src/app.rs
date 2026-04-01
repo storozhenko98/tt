@@ -6,7 +6,7 @@ use crossterm::event::KeyCode;
 use crate::game::*;
 use crate::net::*;
 
-const KEY_HOLD_MS: u128 = 200;
+const KEY_HOLD_MS: u128 = 300;
 
 #[derive(Clone)]
 pub enum AppState {
@@ -298,6 +298,7 @@ impl App {
                     if let AppState::Playing { game, is_host, .. } = &mut self.state {
                         if !*is_host {
                             game.scores = sc;
+                            let was_serving = matches!(game.phase, Phase::Serving { .. });
                             game.phase = match pc {
                                 0 => Phase::Serving { server: sv },
                                 1 => Phase::Rally,
@@ -308,8 +309,10 @@ impl App {
                                 3 => Phase::GameOver { winner: wn },
                                 _ => game.phase.clone(),
                             };
-                            if pc == 0 {
-                                game.ball = Ball::default();
+                            // Only clear trail when first entering Serving;
+                            // ball position is driven by BallState messages.
+                            if pc == 0 && !was_serving {
+                                game.ball.trail.clear();
                             }
                         }
                     }
@@ -356,8 +359,8 @@ impl App {
             let t = 1.0 - (-18.0 * dt).exp();
             *vx += (target - *vx) * t;
         } else {
-            // Coast to stop — gentle momentum
-            let decay = (-5.0 * dt).exp();
+            // Coast to stop — enough momentum to glide through OS key-repeat gap
+            let decay = (-3.0 * dt).exp();
             *vx *= decay;
             if vx.abs() < 1.0 {
                 *vx = 0.0;

@@ -58,10 +58,12 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, name: String) -> R
     let dt = 1.0 / 60.0;
 
     loop {
+        let frame_start = Instant::now();
+
         // Drain input events
         while event::poll(Duration::ZERO)? {
             if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
+                if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat {
                     app.handle_key(key.code);
                 }
             }
@@ -74,10 +76,8 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, name: String) -> R
             break;
         }
 
-        // Frame pacing
-        let start = Instant::now();
-        // Wait for next frame or input event (lower latency than plain sleep)
-        let remaining = TICK.saturating_sub(start.elapsed());
+        // Frame pacing — sleep only the remainder of the 16ms budget
+        let remaining = TICK.saturating_sub(frame_start.elapsed());
         if !remaining.is_zero() {
             let _ = event::poll(remaining);
         }
